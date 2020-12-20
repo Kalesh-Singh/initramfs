@@ -11,7 +11,7 @@
 # Example: If your target architecture is 64-bit arm
 # then, TARGET_ARCH="aarch64"
 
-TARGET_ARCH="arm"
+TARGET_ARCH="x86"
 
 # You can find the latest version number at
 #     https://www.busybox.net/downloads
@@ -151,4 +151,52 @@ time make -j8 install
 cd ..
 
 # -------------------- Initramfs Setup ---------------------
-# TODO
+INITRAMFS_DIR="initramfs"
+INIT_FILE="init"
+
+rm -rf $INITRAMFS_DIR
+mkdir $INITRAMFS_DIR
+
+cd $INITRAMFS_DIR
+
+# Make the directory structure
+mkdir -p bin sbin etc proc sys usr/bin usr/sbin
+
+# Copy busybox artifacts
+cp -a ../$BUSYBOX_DIR/_install/* .
+
+# Copy dropbear artifacts
+cp -a ../$DROPBEAR_DIR/$DROPBEAR_OUT_DIR/* .
+
+# Create a simple init
+cat << EOF > $INIT_FILE
+#!/bin/sh
+
+mount -t proc none /proc
+mount -t sysfs none /sys
+
+cat <<!
+
+
+Boot took $(cut -d' ' -f1 /proc/uptime) seconds
+
+        _       _     __ _
+  /\/\ (_)_ __ (_)   / /(_)_ __  _   ___  __
+ /    \| | '_ \| |  / / | | '_ \| | | \ \/ /
+/ /\/\ \ | | | | | / /__| | | | | |_| |>  <
+\/    \/_|_| |_|_| \____/_|_| |_|\__,_/_/\_\
+
+
+Welcome to mini_linux
+
+!
+exec /bin/sh
+EOF
+
+# Make init executable
+chmod +x $INIT_FILE
+
+# Create initramfs cpio
+find . -print0 | cpio --null -ov --format=newc | gzip -9 > ../initramfs.cpio.gz
+
+# ---------------------------------------------------------------
