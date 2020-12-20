@@ -168,6 +168,15 @@ cp -a ../$BUSYBOX_DIR/_install/* .
 # Copy dropbear artifacts
 cp -a ../$DROPBEAR_DIR/$DROPBEAR_OUT_DIR/* .
 
+# Configure ssh
+mkdir etc/ssh
+cat << EOF > etc/ssh/ssh_config
+Host localhost
+PreferredAuthentications=password
+PubkeyAuthentication=no
+StrictHostKeyChecking=no
+EOF
+
 # Create a simple init
 cat << EOF > $INIT_FILE
 #!/bin/sh
