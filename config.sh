@@ -11,7 +11,7 @@
 # Example: If your target architecture is 64-bit arm
 # then, TARGET_ARCH="aarch64"
 
-TARGET_ARCH="arm"
+TARGET_ARCH="x86"
 
 # You can find the latest version number at
 #     https://www.busybox.net/downloads
@@ -35,6 +35,8 @@ BUSYBOX_VERSION="1.32.0"
 DROPBEAR_VERSION="2020.81"
 
 # !!! NOTE: You don't need to modify this srcipt beyond here !!!
+
+
 # -------------------- Toolchain Setup ---------------------
 
 TARGET_TRIPLE="${TARGET_ARCH}-linux-gnu"
@@ -77,36 +79,54 @@ BUSYBOX_EXTRACT_DIR="busybox-${BUSYBOX_VERSION}"
 
 echo "Downloading $BUSYBOX_DOWNLOAD_URL"
 
-wget $BUSYBOX_DOWNLOAD_URL
+# wget $BUSYBOX_DOWNLOAD_URL
 
-rm -rf $BUSYBOX_DIR
-tar -xvf $BUSYBOX_DOWNLOAD_FILE
-rm $BUSYBOX_DOWNLOAD_FILE
-mv $BUSYBOX_EXTRACT_DIR $BUSYBOX_DIR
-cd $BUSYBOX_DIR
+# rm -rf $BUSYBOX_DIR
+# tar -xvf $BUSYBOX_DOWNLOAD_FILE
+# rm $BUSYBOX_DOWNLOAD_FILE
+# mv $BUSYBOX_EXTRACT_DIR $BUSYBOX_DIR
 
-# Generate the default busybox .config
-if [ -z "$TARGET_TOOLCHAIN_PREFIX" ]; then
-    make defconfig
-else
-    ARCH=$TARGET_ARCH CROSS_COMPILE=$TARGET_TOOLCHAIN_PREFIX make defconfig
-fi
+# cd $BUSYBOX_DIR
 
-# Configure busybox to be built as a static binary
-sed -i 's/# CONFIG_STATIC is not set/CONFIG_STATIC=y/' .config
+# # Generate the default busybox .config
+# if [ -z "$TARGET_TOOLCHAIN_PREFIX" ]; then
+#     make defconfig
+# else
+#     ARCH=$TARGET_ARCH CROSS_COMPILE=$TARGET_TOOLCHAIN_PREFIX make defconfig
+# fi
 
-# Build busybox
-if [ -z "$TARGET_TOOLCHAIN_PREFIX" ]; then
-    make -j8
-    make install -j8
-else
-    ARCH=$TARGET_ARCH CROSS_COMPILE=$TARGET_TOOLCHAIN make -j8
-    ARCH=$TARGET_ARCH CROSS_COMPILE=$TARGET_TOOLCHAIN make install -j8
-fi
+# # Configure busybox to be built as a static binary
+# sed -i 's/# CONFIG_STATIC is not set/CONFIG_STATIC=y/' .config
 
-echo $PWD
-cd ..
-echo $PWD
+# # Build busybox
+# if [ -z "$TARGET_TOOLCHAIN_PREFIX" ]; then
+#     make -j8
+#     make install -j8
+# else
+#     ARCH=$TARGET_ARCH CROSS_COMPILE=$TARGET_TOOLCHAIN make -j8
+#     ARCH=$TARGET_ARCH CROSS_COMPILE=$TARGET_TOOLCHAIN make install -j8
+# fi
+
+# cd ..
 
 # -------------------- Dropbear Setup ---------------------
-# TODO: Dropbear automation
+DROPBEAR_DIR="dropbear"
+DROPBEAR_FILE_EXTENSION="tar.bz2"
+DROPBEAR_DOWNLOAD_FILE="dropbear-${DROPBEAR_VERSION}.${DROPBEAR_FILE_EXTENSION}"
+DROPBEAR_DOWNLOAD_DOMAIN="https://matt.ucc.asn.au/dropbear/releases"
+DROPBEAR_DOWNLOAD_URL="${DROPBEAR_DOWNLOAD_DOMAIN}/${DROPBEAR_DOWNLOAD_FILE}"
+DROPBEAR_EXTRACT_DIR="dropbear-${DROPBEAR_VERSION}"
+
+echo "Downloading $DROPBEAR_DOWNLOAD_URL"
+
+wget $DROPBEAR_DOWNLOAD_URL
+
+rm -rf $DROPBEAR_DIR
+tar -xvf $DROPBEAR_DOWNLOAD_FILE
+rm $DROPBEAR_DOWNLOAD_FILE
+mv $DROPBEAR_EXTRACT_DIR $DROPBEAR_DIR
+
+cd $DROPBEAR_DIR
+# TODO: Make dropbear
+cd ..
+
