@@ -11,7 +11,7 @@
 # Example: If your target architecture is 64-bit arm
 # then, TARGET_ARCH="aarch64"
 
-TARGET_ARCH="x86"
+TARGET_ARCH="arm"
 
 # You can find the latest version number at
 #     https://www.busybox.net/downloads
@@ -36,6 +36,9 @@ DROPBEAR_VERSION="2020.81"
 
 # !!! NOTE: You don't need to modify this srcipt beyond here !!!
 
+# Bail out on first error
+set -e
+
 
 # -------------------- Toolchain Setup ---------------------
 
@@ -55,17 +58,17 @@ if [ -n "$TARGET_TOOLCHAIN_PREFIX" ]; then
     PACKAGED_TAGET_GCC_TOOLCHAIN="gcc-${TARGET_TRIPLE}"
     PACKAGED_TAGET_GPP_TOOLCHAIN="g++-${TARGET_TRIPLE}"
     
-    which $PACKAGED_TAGET_GCC_TOOLCHAIN
-    if [ $? -ne 0 ]; then
+    # which $PACKAGED_TAGET_GCC_TOOLCHAIN
+    # if [ $? -ne 0 ]; then
         echo "Downloading required toolchain: ${PACKAGED_TAGET_GCC_TOOLCHAIN}"
         sudo apt -y install $PACKAGED_TAGET_GCC_TOOLCHAIN
-    fi
+    # fi
 
-    which $PACKAGED_TAGET_GCC_TOOLCHAIN
-    if [ $? -ne 0 ]; then
+    # which $PACKAGED_TAGET_GCC_TOOLCHAIN
+    # if [ $? -ne 0 ]; then
         echo "Downloading required toolchain: ${PACKAGED_TAGET_GCC_TOOLCHAIN}"
         sudo apt -y install $PACKAGED_TAGET_GCC_TOOLCHAIN
-    fi
+    # fi
 fi
 
 
@@ -79,38 +82,40 @@ BUSYBOX_EXTRACT_DIR="busybox-${BUSYBOX_VERSION}"
 
 echo "Downloading $BUSYBOX_DOWNLOAD_URL"
 
-# wget $BUSYBOX_DOWNLOAD_URL
+wget $BUSYBOX_DOWNLOAD_URL
 
-# rm -rf $BUSYBOX_DIR
-# tar -xvf $BUSYBOX_DOWNLOAD_FILE
-# rm $BUSYBOX_DOWNLOAD_FILE
-# mv $BUSYBOX_EXTRACT_DIR $BUSYBOX_DIR
+rm -rf $BUSYBOX_DIR
+tar -xvf $BUSYBOX_DOWNLOAD_FILE
+rm $BUSYBOX_DOWNLOAD_FILE
+mv $BUSYBOX_EXTRACT_DIR $BUSYBOX_DIR
 
-# cd $BUSYBOX_DIR
+cd $BUSYBOX_DIR
 
-# # Generate the default busybox .config
-# if [ -z "$TARGET_TOOLCHAIN_PREFIX" ]; then
-#     make defconfig
-# else
-#     ARCH=$TARGET_ARCH CROSS_COMPILE=$TARGET_TOOLCHAIN_PREFIX make defconfig
-# fi
+# Generate the default busybox .config
+if [ -z "$TARGET_TOOLCHAIN_PREFIX" ]; then
+    make defconfig
+else
+    ARCH=$TARGET_ARCH CROSS_COMPILE=$TARGET_TOOLCHAIN_PREFIX make defconfig
+fi
 
-# # Configure busybox to be built as a static binary
-# sed -i 's/# CONFIG_STATIC is not set/CONFIG_STATIC=y/' .config
+# Configure busybox to be built as a static binary
+sed -i 's/# CONFIG_STATIC is not set/CONFIG_STATIC=y/' .config
 
-# # Build busybox
-# if [ -z "$TARGET_TOOLCHAIN_PREFIX" ]; then
-#     make -j8
-#     make install -j8
-# else
-#     ARCH=$TARGET_ARCH CROSS_COMPILE=$TARGET_TOOLCHAIN make -j8
-#     ARCH=$TARGET_ARCH CROSS_COMPILE=$TARGET_TOOLCHAIN make install -j8
-# fi
+# Build busybox
+if [ -z "$TARGET_TOOLCHAIN_PREFIX" ]; then
+    make -j8
+    make install -j8
+else
+    ARCH=$TARGET_ARCH CROSS_COMPILE=$TARGET_TOOLCHAIN make -j8
+    ARCH=$TARGET_ARCH CROSS_COMPILE=$TARGET_TOOLCHAIN make install -j8
+fi
 
-# cd ..
+cd ..
+
 
 # -------------------- Dropbear Setup ---------------------
 DROPBEAR_DIR="dropbear"
+DROPBEAR_OUT_DIR="out"
 DROPBEAR_FILE_EXTENSION="tar.bz2"
 DROPBEAR_DOWNLOAD_FILE="dropbear-${DROPBEAR_VERSION}.${DROPBEAR_FILE_EXTENSION}"
 DROPBEAR_DOWNLOAD_DOMAIN="https://matt.ucc.asn.au/dropbear/releases"
@@ -127,6 +132,23 @@ rm $DROPBEAR_DOWNLOAD_FILE
 mv $DROPBEAR_EXTRACT_DIR $DROPBEAR_DIR
 
 cd $DROPBEAR_DIR
-# TODO: Make dropbear
+
+# Create an out directory
+rm -rf $DROPBEAR_OUT_DIR
+mkdir $DROPBEAR_OUT_DIR
+
+# Configure dropbear
+if [ -z "$TARGET_TOOLCHAIN_PREFIX" ]; then
+    ./configure --enable-static --disable-zlib --prefix="${PWD}/${DROPBEAR_OUT_DIR}"
+else
+    ./configure --host=$TARGET_TRIPLE --enable-static --disable-zlib --prefix="${PWD}/${DROPBEAR_OUT_DIR}" CC="${TARGET_TOOLCHAIN_PREFIX}gcc" LD="${TARGET_TOOLCHAIN_PREFIX}ld"
+fi
+
+# Make dropbear
+make -j8
+time make -j8 install
+
 cd ..
 
+# -------------------- Initramfs Setup ---------------------
+# TODO
