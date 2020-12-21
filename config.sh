@@ -169,7 +169,9 @@ cp -a ${DROPBEAR_OUT_DIR}/* ${INITRAMFS_DIR}/
 cp -a /etc/localtime ${INITRAMFS_DIR}/etc/
 
 # Copy the authorized keys for your regular user you administrate with
-cp $HOME/.ssh/authorized_keys ${INITRAMFS_DIR}/root/.ssh
+cp $HOME/.ssh/authorized_keys ${INITRAMFS_DIR}/root/.ssh/authorize_keys
+chmod 700 ${INITRAMFS_DIR}/root/.ssh
+chmod 600 ${INITRAMFS_DIR}/root/.ssh/authorize_keys
 
 # Generate SSH server keys
 HOST_RSA_KEY="/etc/ssh/ssh_host_rsa_key"
@@ -249,8 +251,16 @@ done
 ifconfig ${NET_NIC} \${NET_IPv4}
 route add default gw \${NET_GW}
 
+# Fix for no dropbear
+if ! [ -d /dev/pts ]; then mkdir /dev/pts; fi
+mount -t devpts none /dev/pts
+
+ifconfig eth0 up
+udhcpc -i eth0 -t 5 -q -s /bin/simple.scrip
+
 # Start dropbear sshd
-/sbin/dropbear -s -g -p $SSH_PORT -B
+# /sbin/dropbear -s -g -p $SSH_PORT -B
+/sbin/dropbear -p $SSH_PORT -B
 
 
 cat <<!
@@ -272,56 +282,6 @@ cat <<!
 exec /bin/sh
 
 EOF
-
-# >>>>>>>>>>>>>>>>>>>>>>>>>>>>>
-
-## Make the directory structure
-#mkdir -p bin sbin etc proc sys usr/bin usr/sbin
-
-## Copy busybox artifacts
-#cp -a ../$BUSYBOX_DIR/_install/* .
-
-## Copy dropbear artifacts
-#cp -a ../$DROPBEAR_DIR/$DROPBEAR_OUT_DIR/* .
-
-## Configure ssh
-#mkdir etc/ssh
-#cat << EOF > etc/ssh/ssh_config
-#Host localhost
-#PreferredAuthentications=password
-#PubkeyAuthentication=no
-#StrictHostKeyChecking=no
-#EOF
-
-# Create a simple init
-#cat << EOF > $INIT_FILE
-##!/bin/sh
-
-#mount -t proc none /proc
-#mount -t sysfs none /sys
-
-#echo "!!!!!!!! BOOTED - \_(' ')/ !!!!!!!"
-
-#cat <<!
-
-
-#Boot took $(cut -d' ' -f1 /proc/uptime) seconds
-
-#        _       _     __ _
-#  /\/\ (_)_ __ (_)   / /(_)_ __  _   ___  __
-# /    \| | '_ \| |  / / | | '_ \| | | \ \/ /
-#/ /\/\ \ | | | | | / /__| | | | | |_| |>  <
-#\/    \/_|_| |_|_| \____/_|_| |_|\__,_/_/\_\
-
-
-#Welcome to mini_linux
-
-#!
-
-# >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
-
-# exec /bin/sh
-# EOF
 
 
 # Make init executable
