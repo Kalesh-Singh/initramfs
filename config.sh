@@ -81,37 +81,37 @@ BUSYBOX_DOWNLOAD_DOMAIN="https://www.busybox.net/downloads"
 BUSYBOX_DOWNLOAD_URL="${BUSYBOX_DOWNLOAD_DOMAIN}/${BUSYBOX_DOWNLOAD_FILE}"
 BUSYBOX_EXTRACT_DIR="busybox-${BUSYBOX_VERSION}"
 
-echo "Downloading $BUSYBOX_DOWNLOAD_URL"
+# echo "Downloading $BUSYBOX_DOWNLOAD_URL"
 
-wget $BUSYBOX_DOWNLOAD_URL
+# wget $BUSYBOX_DOWNLOAD_URL
 
-rm -rf $BUSYBOX_DIR
-tar -xvf $BUSYBOX_DOWNLOAD_FILE
-rm $BUSYBOX_DOWNLOAD_FILE
-mv $BUSYBOX_EXTRACT_DIR $BUSYBOX_DIR
+# rm -rf $BUSYBOX_DIR
+# tar -xvf $BUSYBOX_DOWNLOAD_FILE
+# rm $BUSYBOX_DOWNLOAD_FILE
+# mv $BUSYBOX_EXTRACT_DIR $BUSYBOX_DIR
 
-cd $BUSYBOX_DIR
+# cd $BUSYBOX_DIR
 
-# Generate the default busybox .config
-if [ -z "$TARGET_TOOLCHAIN_PREFIX" ]; then
-    make defconfig
-else
-    ARCH=$TARGET_ARCH CROSS_COMPILE=$TARGET_TOOLCHAIN_PREFIX make defconfig
-fi
+# # Generate the default busybox .config
+# if [ -z "$TARGET_TOOLCHAIN_PREFIX" ]; then
+#     make defconfig
+# else
+#     ARCH=$TARGET_ARCH CROSS_COMPILE=$TARGET_TOOLCHAIN_PREFIX make defconfig
+# fi
 
-# Configure busybox to be built as a static binary
-sed -i 's/# CONFIG_STATIC is not set/CONFIG_STATIC=y/' .config
+# # Configure busybox to be built as a static binary
+# sed -i 's/# CONFIG_STATIC is not set/CONFIG_STATIC=y/' .config
 
-# Build busybox
-if [ -z "$TARGET_TOOLCHAIN_PREFIX" ]; then
-    make -j8
-    make install -j8
-else
-    ARCH=$TARGET_ARCH CROSS_COMPILE=$TARGET_TOOLCHAIN make -j8
-    ARCH=$TARGET_ARCH CROSS_COMPILE=$TARGET_TOOLCHAIN make install -j8
-fi
+# # Build busybox
+# if [ -z "$TARGET_TOOLCHAIN_PREFIX" ]; then
+#     make -j8
+#     make install -j8
+# else
+#     ARCH=$TARGET_ARCH CROSS_COMPILE=$TARGET_TOOLCHAIN make -j8
+#     ARCH=$TARGET_ARCH CROSS_COMPILE=$TARGET_TOOLCHAIN make install -j8
+# fi
 
-cd ..
+# cd ..
 
 
 # -------------------- Dropbear Setup ---------------------
@@ -123,33 +123,33 @@ DROPBEAR_DOWNLOAD_DOMAIN="https://matt.ucc.asn.au/dropbear/releases"
 DROPBEAR_DOWNLOAD_URL="${DROPBEAR_DOWNLOAD_DOMAIN}/${DROPBEAR_DOWNLOAD_FILE}"
 DROPBEAR_EXTRACT_DIR="dropbear-${DROPBEAR_VERSION}"
 
-echo "Downloading $DROPBEAR_DOWNLOAD_URL"
+# echo "Downloading $DROPBEAR_DOWNLOAD_URL"
 
-wget $DROPBEAR_DOWNLOAD_URL
+# wget $DROPBEAR_DOWNLOAD_URL
 
-rm -rf $DROPBEAR_DIR
-tar -xvf $DROPBEAR_DOWNLOAD_FILE
-rm $DROPBEAR_DOWNLOAD_FILE
-mv $DROPBEAR_EXTRACT_DIR $DROPBEAR_DIR
+# rm -rf $DROPBEAR_DIR
+# tar -xvf $DROPBEAR_DOWNLOAD_FILE
+# rm $DROPBEAR_DOWNLOAD_FILE
+# mv $DROPBEAR_EXTRACT_DIR $DROPBEAR_DIR
 
-cd $DROPBEAR_DIR
+# cd $DROPBEAR_DIR
 
-# Create an out directory
-rm -rf $DROPBEAR_OUT_DIR
-mkdir $DROPBEAR_OUT_DIR
+# # Create an out directory
+# rm -rf $DROPBEAR_OUT_DIR
+# mkdir $DROPBEAR_OUT_DIR
 
-# Configure dropbear
-if [ -z "$TARGET_TOOLCHAIN_PREFIX" ]; then
-    ./configure --enable-static --disable-zlib --prefix="${DROPBEAR_OUT_DIR}"
-else
-    ./configure --host=$TARGET_TRIPLE --enable-static --disable-zlib --prefix="${DROPBEAR_OUT_DIR}" CC="${TARGET_TOOLCHAIN_PREFIX}gcc" LD="${TARGET_TOOLCHAIN_PREFIX}ld"
-fi
+# # Configure dropbear
+# if [ -z "$TARGET_TOOLCHAIN_PREFIX" ]; then
+#     ./configure --enable-static --disable-zlib --prefix="${DROPBEAR_OUT_DIR}"
+# else
+#     ./configure --host=$TARGET_TRIPLE --enable-static --disable-zlib --prefix="${DROPBEAR_OUT_DIR}" CC="${TARGET_TOOLCHAIN_PREFIX}gcc" LD="${TARGET_TOOLCHAIN_PREFIX}ld"
+# fi
 
-# Make dropbear
-make -j8
-time make -j8 install
+# # Make dropbear
+# make -j8
+# time make -j8 install
 
-cd ..
+# cd ..
 
 # -------------------- Initramfs Setup ---------------------
 INITRAMFS_DIR="${PWD}/initramfs"
@@ -172,15 +172,28 @@ cp -a /etc/localtime ${INITRAMFS_DIR}/etc/
 cp $HOME/.ssh/authorized_keys ${INITRAMFS_DIR}/root/.ssh
 
 # Generate SSH server keys
-sudo ssh-keygen -f /etc/ssh/ssh_host_rsa_key -N '' -t rsa
-sudo ssh-keygen -f /etc/ssh/ssh_host_dsa_key -N '' -t dsa
-sudo ssh-keygen -f /etc/ssh/ssh_host_ecdsa_key -N '' -t ecdsa -b 521
+HOST_RSA_KEY="/etc/ssh/ssh_host_rsa_key"
+HOST_DSA_KEY="/etc/ssh/ssh_host_dsa_key"
+HOST_ECDSA_KEY="/etc/ssh/ssh_host_ecdsa_key"
+
+if [ ! -f "$HOST_RSA_KEY" ]; then
+    sudo ssh-keygen -f $HOST_RSA_KEY -N '' -t rsa
+fi
+if [ ! -f "$HOST_DSA_KEY" ]; then
+    sudo ssh-keygen -f $HOST_DSA_KEY -N '' -t dsa
+fi
+if [ ! -f "$HOST_ECDSA_KEY" ]; then
+    sudo ssh-keygen -f $HOST_ECDSA_KEY -N '' -t ecdsa -b 521
+fi
+
 # Copy OpenSSH's host keys to keep both initramfs' and regular ssh signed the same
 # otherwise openssh clients will see different host keys and chicken out. Here we only copy the
 # ecdsa host key, because ecdsa is default with OpenSSH. For RSA and others, copy adequate keyfile.
-sudo ${INITRAMFS_DIR}/bin/dropbearconvert openssh dropbear /etc/ssh/ssh_host_rsa_key ${INITRAMFS_DIR}/etc/dropbear/dropbear_rsa_host_key
-sudo ${INITRAMFS_DIR}/bin/dropbearconvert openssh dropbear /etc/ssh/ssh_host_dsa_key ${INITRAMFS_DIR}/etc/dropbear/dropbear_dsa_host_key
-sudo ${INITRAMFS_DIR}/bin/dropbearconvert openssh dropbear /etc/ssh/ssh_host_ecdsa_key ${INITRAMFS_DIR}/etc/dropbear/dropbear_ecdsa_host_key
+sudo -s -- <<EOF
+${INITRAMFS_DIR}/bin/dropbearconvert openssh dropbear ${HOST_RSA_KEY} ${INITRAMFS_DIR}/etc/dropbear/dropbear_rsa_host_key
+${INITRAMFS_DIR}/bin/dropbearconvert openssh dropbear ${HOST_DSA_KEY} ${INITRAMFS_DIR}/etc/dropbear/dropbear_dsa_host_key
+${INITRAMFS_DIR}/bin/dropbearconvert openssh dropbear ${HOST_ECDSA_KEY} ${INITRAMFS_DIR}/etc/dropbear/dropbear_ecdsa_host_key
+EOF
 
 # These two libs are needed for dropbear, even if it's built statically, because we don't use PAM
 # and dropbear uses libnss to find user to authenticate against
@@ -191,10 +204,10 @@ sudo ${INITRAMFS_DIR}/bin/dropbearconvert openssh dropbear /etc/ssh/ssh_host_ecd
 # Basic system defaults
 echo "root:x:0:0:root:/root:/bin/sh" > ${INITRAMFS_DIR}/etc/passwd
 echo "INIT DIR = ${INITRAMFS_DIR}"
-# echo "root:*:::::::" > ${INITRAMFS}/etc/shadow
-# echo "root:x:0:root" > ${INITRAMFS}/etc/group
-# echo "/bin/sh" > ${INITRAMFS}/etc/shells
-# chmod 640 ${INITRAMFS}/etc/shadow
+echo "root:*:::::::" > ${INITRAMFS_DIR}/etc/shadow
+echo "root:x:0:root" > ${INITRAMFS_DIR}/etc/group
+echo "/bin/sh" > ${INITRAMFS_DIR}/etc/shells
+chmod 640 ${INITRAMFS_DIR}/etc/shadow
 
 # >>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 
