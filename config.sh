@@ -81,37 +81,37 @@ BUSYBOX_DOWNLOAD_DOMAIN="https://www.busybox.net/downloads"
 BUSYBOX_DOWNLOAD_URL="${BUSYBOX_DOWNLOAD_DOMAIN}/${BUSYBOX_DOWNLOAD_FILE}"
 BUSYBOX_EXTRACT_DIR="busybox-${BUSYBOX_VERSION}"
 
-# echo "Downloading $BUSYBOX_DOWNLOAD_URL"
+echo "Downloading $BUSYBOX_DOWNLOAD_URL"
 
-# wget $BUSYBOX_DOWNLOAD_URL
+wget $BUSYBOX_DOWNLOAD_URL
 
-# rm -rf $BUSYBOX_DIR
-# tar -xvf $BUSYBOX_DOWNLOAD_FILE
-# rm $BUSYBOX_DOWNLOAD_FILE
-# mv $BUSYBOX_EXTRACT_DIR $BUSYBOX_DIR
+rm -rf $BUSYBOX_DIR
+tar -xvf $BUSYBOX_DOWNLOAD_FILE
+rm $BUSYBOX_DOWNLOAD_FILE
+mv $BUSYBOX_EXTRACT_DIR $BUSYBOX_DIR
 
-# cd $BUSYBOX_DIR
+cd $BUSYBOX_DIR
 
-# # Generate the default busybox .config
-# if [ -z "$TARGET_TOOLCHAIN_PREFIX" ]; then
-#     make defconfig
-# else
-#     ARCH=$TARGET_ARCH CROSS_COMPILE=$TARGET_TOOLCHAIN_PREFIX make defconfig
-# fi
+# Generate the default busybox .config
+if [ -z "$TARGET_TOOLCHAIN_PREFIX" ]; then
+    make defconfig
+else
+    ARCH=$TARGET_ARCH CROSS_COMPILE=$TARGET_TOOLCHAIN_PREFIX make defconfig
+fi
 
-# # Configure busybox to be built as a static binary
-# sed -i 's/# CONFIG_STATIC is not set/CONFIG_STATIC=y/' .config
+# Configure busybox to be built as a static binary
+sed -i 's/# CONFIG_STATIC is not set/CONFIG_STATIC=y/' .config
 
-# # Build busybox
-# if [ -z "$TARGET_TOOLCHAIN_PREFIX" ]; then
-#     make -j8
-#     make install -j8
-# else
-#     ARCH=$TARGET_ARCH CROSS_COMPILE=$TARGET_TOOLCHAIN make -j8
-#     ARCH=$TARGET_ARCH CROSS_COMPILE=$TARGET_TOOLCHAIN make install -j8
-# fi
+# Build busybox
+if [ -z "$TARGET_TOOLCHAIN_PREFIX" ]; then
+    make -j8
+    make install -j8
+else
+    ARCH=$TARGET_ARCH CROSS_COMPILE=$TARGET_TOOLCHAIN make -j8
+    ARCH=$TARGET_ARCH CROSS_COMPILE=$TARGET_TOOLCHAIN make install -j8
+fi
 
-# cd ..
+cd ..
 
 
 # -------------------- Dropbear Setup ---------------------
@@ -123,33 +123,33 @@ DROPBEAR_DOWNLOAD_DOMAIN="https://matt.ucc.asn.au/dropbear/releases"
 DROPBEAR_DOWNLOAD_URL="${DROPBEAR_DOWNLOAD_DOMAIN}/${DROPBEAR_DOWNLOAD_FILE}"
 DROPBEAR_EXTRACT_DIR="dropbear-${DROPBEAR_VERSION}"
 
-# echo "Downloading $DROPBEAR_DOWNLOAD_URL"
+echo "Downloading $DROPBEAR_DOWNLOAD_URL"
 
-# wget $DROPBEAR_DOWNLOAD_URL
+wget $DROPBEAR_DOWNLOAD_URL
 
-# rm -rf $DROPBEAR_DIR
-# tar -xvf $DROPBEAR_DOWNLOAD_FILE
-# rm $DROPBEAR_DOWNLOAD_FILE
-# mv $DROPBEAR_EXTRACT_DIR $DROPBEAR_DIR
+rm -rf $DROPBEAR_DIR
+tar -xvf $DROPBEAR_DOWNLOAD_FILE
+rm $DROPBEAR_DOWNLOAD_FILE
+mv $DROPBEAR_EXTRACT_DIR $DROPBEAR_DIR
 
-# cd $DROPBEAR_DIR
+cd $DROPBEAR_DIR
 
-# # Create an out directory
-# rm -rf $DROPBEAR_OUT_DIR
-# mkdir $DROPBEAR_OUT_DIR
+# Create an out directory
+rm -rf $DROPBEAR_OUT_DIR
+mkdir $DROPBEAR_OUT_DIR
 
-# # Configure dropbear
-# if [ -z "$TARGET_TOOLCHAIN_PREFIX" ]; then
-#     ./configure --enable-static --disable-zlib --prefix="${DROPBEAR_OUT_DIR}"
-# else
-#     ./configure --host=$TARGET_TRIPLE --enable-static --disable-zlib --prefix="${DROPBEAR_OUT_DIR}" CC="${TARGET_TOOLCHAIN_PREFIX}gcc" LD="${TARGET_TOOLCHAIN_PREFIX}ld"
-# fi
+# Configure dropbear
+if [ -z "$TARGET_TOOLCHAIN_PREFIX" ]; then
+    ./configure --enable-static --disable-zlib --prefix="${DROPBEAR_OUT_DIR}"
+else
+    ./configure --host=$TARGET_TRIPLE --enable-static --disable-zlib --prefix="${DROPBEAR_OUT_DIR}" CC="${TARGET_TOOLCHAIN_PREFIX}gcc" LD="${TARGET_TOOLCHAIN_PREFIX}ld"
+fi
 
-# # Make dropbear
-# make -j8
-# time make -j8 install
+# Make dropbear
+make -j8
+time make -j8 install
 
-# cd ..
+cd ..
 
 # -------------------- Initramfs Setup ---------------------
 INITRAMFS_DIR="${PWD}/initramfs"
