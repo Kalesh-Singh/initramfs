@@ -203,11 +203,57 @@ EOF
 
 # Basic system defaults
 echo "root:x:0:0:root:/root:/bin/sh" > ${INITRAMFS_DIR}/etc/passwd
-echo "INIT DIR = ${INITRAMFS_DIR}"
 echo "root:*:::::::" > ${INITRAMFS_DIR}/etc/shadow
 echo "root:x:0:root" > ${INITRAMFS_DIR}/etc/group
 echo "/bin/sh" > ${INITRAMFS_DIR}/etc/shells
 chmod 640 ${INITRAMFS_DIR}/etc/shadow
+
+
+# Basic INIT SCRIPT
+cat << EOF > ${INITRAMFS_DIR}/init
+#!/bin/busybox sh
+
+# These defaults should rarely change between machines so they're coded here instead of
+# taking values from the kernel command line. You might wish to use a nonstandard SSH port, tho'.
+# We use "root" for the root mapper to be consistent with genkernel's implementation that
+# unlocks the root into /dev/mapper/root, but really it's arbitrary and could be anything
+NET_NIC="eth0"
+SSH_PORT="22"
+MAPPER="root"
+
+/bin/busybox mkdir -p /usr/sbin /usr/bin /sbin /bin
+/bin/busybox --install -s
+touch /var/log/lastlog
+
+mount -t devtmpfs none /dev
+mount -t proc proc /proc
+mount -t sysfs none /sys
+
+# Root partition and networking could be different between machines so take those configs from the
+# kernel command line
+for x in \$(cat /proc/cmdline); do
+   case "\${x}" in
+      crypt_root=*)
+         CRYPT_ROOT=\${x#*=}
+      ;;
+      net_ipv4=*)
+         NET_IPv4=\${x#*=}
+      ;;
+      net_gw=*)
+         NET_GW=\${x#*=}
+      ;;
+   esac
+done
+
+# Bootstrap the network
+ifconfig ${NET_NIC} \${NET_IPv4}
+route add default gw \${NET_GW}
+
+# Start dropbear sshd
+/sbin/dropbear -s -g -p $SSH_PORT -B
+
+echo "!!! BOOTED and started dropbear !!!"
+EOF
 
 # >>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 
@@ -230,13 +276,13 @@ chmod 640 ${INITRAMFS_DIR}/etc/shadow
 #EOF
 
 # Create a simple init
-cat << EOF > $INIT_FILE
-#!/bin/sh
+#cat << EOF > $INIT_FILE
+##!/bin/sh
 
-mount -t proc none /proc
-mount -t sysfs none /sys
+#mount -t proc none /proc
+#mount -t sysfs none /sys
 
-echo "!!!!!!!! BOOTED - \_(' ')/ !!!!!!!"
+#echo "!!!!!!!! BOOTED - \_(' ')/ !!!!!!!"
 
 #cat <<!
 
@@ -256,8 +302,8 @@ echo "!!!!!!!! BOOTED - \_(' ')/ !!!!!!!"
 
 # >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 
-exec /bin/sh
-EOF
+# exec /bin/sh
+# EOF
 
 
 # Make init executable
