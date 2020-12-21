@@ -252,7 +252,25 @@ route add default gw \${NET_GW}
 # Start dropbear sshd
 /sbin/dropbear -s -g -p $SSH_PORT -B
 
-echo "!!! BOOTED and started dropbear !!!"
+
+cat <<!
+
+[ INFO ] : Started dropbear"
+
+[ INFO ] : Boot took $(cut -d' ' -f1 /proc/uptime) seconds
+    _  _
+   / /(_)_ __  _   ___  __
+  / / | | '_ \| | | \ \/ /
+ / /__| | | | | |_| |>  <
+ \____/_|_| |_|\__,_/_/\_\
+
+
+[ INFO ] : Starting BusyBox . . .
+
+!
+
+exec /bin/sh
+
 EOF
 
 # >>>>>>>>>>>>>>>>>>>>>>>>>>>>>
