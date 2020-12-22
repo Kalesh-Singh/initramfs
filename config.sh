@@ -52,6 +52,12 @@ GLIBC_VERSION="2.32"
 # Bail out on first error
 set -e
 
+# Create initramfs directory
+INITRAMFS_DIR="${PWD}/initramfs"
+INIT_FILE="${INITRAMFS_DIR}/init"
+
+rm -rf $INITRAMFS_DIR
+mkdir $INITRAMFS_DIR
 
 # -------------------- Toolchain Setup ---------------------
 
@@ -203,28 +209,24 @@ fi
 
 # Make glibc
 make -j8
-time make install install_root=${GLIBC_OUT_DIR} -j8
+time make install install_root=${INITRAMFS_DIR} -j8
 
 cd $GLIBC_DIR
 cd ..
 
 
 # -------------------- Initramfs Setup ---------------------
-INITRAMFS_DIR="${PWD}/initramfs"
-INIT_FILE="${INITRAMFS_DIR}/init"
-
-rm -rf $INITRAMFS_DIR
-mkdir $INITRAMFS_DIR
-
 cd $INITRAMFS_DIR
 
 
 # Prepare basic structure and copy basic files and bins
 # This assumes dropbear and busybox are built static
-mkdir -p ${INITRAMFS_DIR}/{bin,dev,etc/dropbear,lib64,mnt/root,proc,root/.ssh,sys,usr/sbin,var/log,var/run}
+mkdir -p ${INITRAMFS_DIR}/{bin,dev,etc/dropbear,lib64,mnt/root,proc,root/.ssh,sys,usr/sbin,var/log,var/run,home/root}
 cp -a ${BUSYBOX_OUT_DIR}/* ${INITRAMFS_DIR}/
 cp -a ${DROPBEAR_OUT_DIR}/* ${INITRAMFS_DIR}/
 cp -a /etc/localtime ${INITRAMFS_DIR}/etc/
+
+echo "HERE !!!"
 
 # Copy the authorized keys for your regular user you administrate with
 cp $HOME/.ssh/authorized_keys ${INITRAMFS_DIR}/root/.ssh/authorize_keys
@@ -274,76 +276,76 @@ shadow:	files
 group:	files
 EOF
 
-# For each of the non-static binary listed above, copy the required libs
-# Note: lddtree belongs to app-misc/pax-utils the newer versions of which
-# can automatically copy the whole lib tree with --copy-to-tree option
-for B in $BINS; do
-	for L in $(lddtree -l $B); do
-		DIR=$(dirname $L)
-		mkdir -p ${INITRAMFS_DIR}${DIR}
-		cp -L $L ${INITRAMFS_DIR}${L}
-	done
-done
+# # For each of the non-static binary listed above, copy the required libs
+# # Note: lddtree belongs to app-misc/pax-utils the newer versions of which
+# # can automatically copy the whole lib tree with --copy-to-tree option
+# for B in $BINS; do
+# 	for L in $(lddtree -l $B); do
+# 		DIR=$(dirname $L)
+# 		mkdir -p ${INITRAMFS_DIR}${DIR}
+# 		cp -L $L ${INITRAMFS_DIR}${L}
+# 	done
+# done
 
 # Basic INIT SCRIPT
-cat << EOF > ${INITRAMFS_DIR}/init
+cat << EOF > ${INIT_FILE}
 #!/bin/busybox sh
 
-# These defaults should rarely change between machines so they're coded here instead of
-# taking values from the kernel command line. You might wish to use a nonstandard SSH port, tho'.
-# We use "root" for the root mapper to be consistent with genkernel's implementation that
-# unlocks the root into /dev/mapper/root, but really it's arbitrary and could be anything
-NET_NIC="eth0"
-SSH_PORT="22"
-MAPPER="root"
+# # These defaults should rarely change between machines so they're coded here instead of
+# # taking values from the kernel command line. You might wish to use a nonstandard SSH port, tho'.
+# # We use "root" for the root mapper to be consistent with genkernel's implementation that
+# # unlocks the root into /dev/mapper/root, but really it's arbitrary and could be anything
+# NET_NIC="eth0"
+# SSH_PORT="22"
+# MAPPER="root"
 
-/bin/busybox mkdir -p /usr/sbin /usr/bin /sbin /bin
-/bin/busybox --install -s
-touch /var/log/lastlog
+# /bin/busybox mkdir -p /usr/sbin /usr/bin /sbin /bin
+# /bin/busybox --install -s
+# touch /var/log/lastlog
 
 mount -t devtmpfs none /dev
 mount -t proc proc /proc
 mount -t sysfs none /sys
 
-# Root partition and networking could be different between machines so take those configs from the
-# kernel command line
-for x in \$(cat /proc/cmdline); do
-   case "\${x}" in
-      crypt_root=*)
-         CRYPT_ROOT=\${x#*=}
-      ;;
-      net_ipv4=*)
-         NET_IPv4=\${x#*=}
-      ;;
-      net_gw=*)
-         NET_GW=\${x#*=}
-      ;;
-   esac
-done
+# # Root partition and networking could be different between machines so take those configs from the
+# # kernel command line
+# for x in \$(cat /proc/cmdline); do
+#    case "\${x}" in
+#       crypt_root=*)
+#          CRYPT_ROOT=\${x#*=}
+#       ;;
+#       net_ipv4=*)
+#          NET_IPv4=\${x#*=}
+#       ;;
+#       net_gw=*)
+#          NET_GW=\${x#*=}
+#       ;;
+#    esac
+# done
 
-# Bootstrap the network
-ifconfig ${NET_NIC} \${NET_IPv4}
-route add default gw \${NET_GW}
+# # Bootstrap the network
+# ifconfig ${NET_NIC} \${NET_IPv4}
+# route add default gw \${NET_GW}
 
-# Fix for no dropbear
-if ! [ -d /dev/pts ]; then mkdir /dev/pts; fi
-mount -t devpts none /dev/pts
+# # Fix for no dropbear
+# if ! [ -d /dev/pts ]; then mkdir /dev/pts; fi
+# mount -t devpts none /dev/pts
 
-ifconfig eth0 up
-udhcpc -i eth0 -t 5 -q -s /bin/simple.script
+# ifconfig eth0 up
+# udhcpc -i eth0 -t 5 -q -s /bin/simple.script
 
-# Start dropbear sshd
-/sbin/dropbear -s -g -p $SSH_PORT -B
+# # Start dropbear sshd
+# /sbin/dropbear -s -g -p $SSH_PORT -B
 
-sleep 1
-clear
-echo "Waiting for root unlock..."
+# sleep 1
+# clear
+# echo "Waiting for root unlock..."
 
-# Wait for the unlocked root mapper to appear
-while [ ! -e /dev/mapper/${MAPPER} ]; do
-	sleep 1
-done
-mount -o ro /dev/mapper/${MAPPER} /mnt/root
+# # Wait for the unlocked root mapper to appear
+# while [ ! -e /dev/mapper/${MAPPER} ]; do
+# 	sleep 1
+# done
+# mount -o ro /dev/mapper/${MAPPER} /mnt/root
 
 cat <<!
 
