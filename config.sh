@@ -25,7 +25,7 @@ TARGET_ARCH="x86"
 BUSYBOX_VERSION="1.32.0"
 
 # You can find the latest version number at:
-#     https://matt.ucc.asn.au/dropbear/releases"
+#     https://matt.ucc.asn.au/dropbear/releases
 #
 # You only need to specify the version number
 # Example: If the latest release is:
@@ -34,7 +34,20 @@ BUSYBOX_VERSION="1.32.0"
 
 DROPBEAR_VERSION="2020.81"
 
+# You can find the latest version number at:
+#     http://ftp.gnu.org/gnu/glibc
+#
+# You only need to specify the version number
+# Example: If the latest release is:
+#    glibc-2.32.tar.bz2
+# then, GLIBC_VERSION="2.32"
+
+GLIBC_VERSION="2.32"
+
+
 # !!! NOTE: You don't need to modify this srcipt beyond here !!!
+
+
 
 # Bail out on first error
 set -e
@@ -151,6 +164,51 @@ DROPBEAR_EXTRACT_DIR="dropbear-${DROPBEAR_VERSION}"
 
 # cd ..
 
+
+# -------------------- glibc Setup ---------------------
+# We need latest gawk to compile gcc
+sudo apt install gawk
+
+GLIBC_DIR="${PWD}/glibc"
+GLIBC_OUT_DIR="${GLIBC_DIR}/out"
+GLIBC_FILE_EXTENSION="tar.bz2"
+GLIBC_DOWNLOAD_FILE="glibc-${GLIBC_VERSION}.${GLIBC_FILE_EXTENSION}"
+GLIBC_DOWNLOAD_DOMAIN="http://ftp.gnu.org/gnu/glibc"
+GLIBC_DOWNLOAD_URL="${GLIBC_DOWNLOAD_DOMAIN}/${GLIBC_DOWNLOAD_FILE}"
+GLIBC_EXTRACT_DIR="glibc-${GLIBC_VERSION}"
+
+echo "Downloading $GLIBC_DOWNLOAD_URL"
+
+wget $GLIBC_DOWNLOAD_URL
+
+rm -rf $GLIBC_DIR
+tar -xvf $GLIBC_DOWNLOAD_FILE
+rm $GLIBC_DOWNLOAD_FILE
+mv $GLIBC_EXTRACT_DIR $GLIBC_DIR
+
+cd $GLIBC_DIR
+
+# Create an out directory
+rm -rf $GLIBC_OUT_DIR
+mkdir $GLIBC_OUT_DIR
+
+cd $GLIBC_OUT_DIR
+
+# Configure glibc
+if [ -z "$TARGET_TOOLCHAIN_PREFIX" ]; then
+    ${GLIBC_DIR}/configure --enable-static --disable-zlib --prefix="${GLIBC_OUT_DIR}" --enable-add-ons
+else
+    ${GLIBC_DIR}/configure --host=$TARGET_TRIPLE --enable-static --disable-zlib --prefix="${GLIBC_OUT_DIR}" --enable-add-ons CC="${TARGET_TOOLCHAIN_PREFIX}gcc" LD="${TARGET_TOOLCHAIN_PREFIX}ld"
+fi
+
+# Make glibc
+make -j8
+time make install install_root=${GLIBC_OUT_DIR} -j8
+
+cd $GLIBC_DIR
+cd ..
+
+
 # -------------------- Initramfs Setup ---------------------
 INITRAMFS_DIR="${PWD}/initramfs"
 INIT_FILE="${INITRAMFS_DIR}/init"
@@ -210,6 +268,22 @@ echo "root:x:0:root" > ${INITRAMFS_DIR}/etc/group
 echo "/bin/sh" > ${INITRAMFS_DIR}/etc/shells
 chmod 640 ${INITRAMFS_DIR}/etc/shadow
 
+cat << EOF > ${INITRAMFS_DIR}/etc/nsswitch.conf
+passwd:	files
+shadow:	files
+group:	files
+EOF
+
+# For each of the non-static binary listed above, copy the required libs
+# Note: lddtree belongs to app-misc/pax-utils the newer versions of which
+# can automatically copy the whole lib tree with --copy-to-tree option
+for B in $BINS; do
+	for L in $(lddtree -l $B); do
+		DIR=$(dirname $L)
+		mkdir -p ${INITRAMFS_DIR}${DIR}
+		cp -L $L ${INITRAMFS_DIR}${L}
+	done
+done
 
 # Basic INIT SCRIPT
 cat << EOF > ${INITRAMFS_DIR}/init
@@ -256,12 +330,20 @@ if ! [ -d /dev/pts ]; then mkdir /dev/pts; fi
 mount -t devpts none /dev/pts
 
 ifconfig eth0 up
-udhcpc -i eth0 -t 5 -q -s /bin/simple.scrip
+udhcpc -i eth0 -t 5 -q -s /bin/simple.script
 
 # Start dropbear sshd
-# /sbin/dropbear -s -g -p $SSH_PORT -B
-/sbin/dropbear -p $SSH_PORT -B
+/sbin/dropbear -s -g -p $SSH_PORT -B
 
+sleep 1
+clear
+echo "Waiting for root unlock..."
+
+# Wait for the unlocked root mapper to appear
+while [ ! -e /dev/mapper/${MAPPER} ]; do
+	sleep 1
+done
+mount -o ro /dev/mapper/${MAPPER} /mnt/root
 
 cat <<!
 
