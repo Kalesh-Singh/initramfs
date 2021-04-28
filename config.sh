@@ -11,7 +11,7 @@
 # Example: If your target architecture is 64-bit arm
 # then, TARGET_ARCH="aarch64"
 
-TARGET_ARCH="x86"
+TARGET_ARCH="aarch64"
 
 # You can find the latest version number at
 #     https://www.busybox.net/downloads
@@ -188,36 +188,36 @@ GLIBC_DOWNLOAD_DOMAIN="http://ftp.gnu.org/gnu/glibc"
 GLIBC_DOWNLOAD_URL="${GLIBC_DOWNLOAD_DOMAIN}/${GLIBC_DOWNLOAD_FILE}"
 GLIBC_EXTRACT_DIR="glibc-${GLIBC_VERSION}"
 
-echo "Downloading $GLIBC_DOWNLOAD_URL"
+# echo "Downloading $GLIBC_DOWNLOAD_URL"
 
-wget $GLIBC_DOWNLOAD_URL
+# wget $GLIBC_DOWNLOAD_URL
 
-rm -rf $GLIBC_DIR
-tar -xvf $GLIBC_DOWNLOAD_FILE
-rm $GLIBC_DOWNLOAD_FILE
-mv $GLIBC_EXTRACT_DIR $GLIBC_DIR
+# rm -rf $GLIBC_DIR
+# tar -xvf $GLIBC_DOWNLOAD_FILE
+# rm $GLIBC_DOWNLOAD_FILE
+# mv $GLIBC_EXTRACT_DIR $GLIBC_DIR
 
-cd $GLIBC_DIR
+# cd $GLIBC_DIR
 
-# Create an out directory
-rm -rf $GLIBC_OUT_DIR
-mkdir $GLIBC_OUT_DIR
+# # Create an out directory
+# rm -rf $GLIBC_OUT_DIR
+# mkdir $GLIBC_OUT_DIR
 
-cd $GLIBC_OUT_DIR
+# cd $GLIBC_OUT_DIR
 
-# Configure glibc
-if [ -z "$TARGET_TOOLCHAIN_PREFIX" ]; then
-    ${GLIBC_DIR}/configure --enable-static --disable-zlib --prefix="${GLIBC_OUT_DIR}" --enable-add-ons
-else
-    ${GLIBC_DIR}/configure --host=$TARGET_TRIPLE --enable-static --disable-zlib --prefix="${GLIBC_OUT_DIR}" --enable-add-ons CC="${TARGET_TOOLCHAIN_PREFIX}gcc" LD="${TARGET_TOOLCHAIN_PREFIX}ld"
-fi
+# # Configure glibc
+# if [ -z "$TARGET_TOOLCHAIN_PREFIX" ]; then
+#     ${GLIBC_DIR}/configure --enable-static --disable-zlib --prefix="${GLIBC_OUT_DIR}" --enable-add-ons
+# else
+#     ${GLIBC_DIR}/configure --host=$TARGET_TRIPLE --enable-static --disable-zlib --prefix="${GLIBC_OUT_DIR}" --enable-add-ons CC="${TARGET_TOOLCHAIN_PREFIX}gcc" LD="${TARGET_TOOLCHAIN_PREFIX}ld"
+# fi
 
-# Make glibc
-make -j8
-time make install install_root=${INITRAMFS_DIR} -j8
+# # Make glibc
+# make -j8
+# time make install install_root=${INITRAMFS_DIR} -j8
 
-cd $GLIBC_DIR
-cd ..
+# cd $GLIBC_DIR
+# cd ..
 
 
 # -------------------- Initramfs Setup ---------------------
@@ -228,58 +228,58 @@ cd $INITRAMFS_DIR
 # This assumes dropbear and busybox are built static
 mkdir -p ${INITRAMFS_DIR}/{bin,dev,etc/dropbear,lib64,mnt/root,proc,root/.ssh,sys,usr/sbin,var/log,var/run,home/root}
 cp -a ${BUSYBOX_OUT_DIR}/* ${INITRAMFS_DIR}/
-cp -a ${DROPBEAR_OUT_DIR}/* ${INITRAMFS_DIR}/
-cp -a /etc/localtime ${INITRAMFS_DIR}/etc/
+# cp -a ${DROPBEAR_OUT_DIR}/* ${INITRAMFS_DIR}/
+# cp -a /etc/localtime ${INITRAMFS_DIR}/etc/
 
-echo "HERE !!!"
+# echo "HERE !!!"
 
-# Copy the authorized keys for your regular user you administrate with
-cp $HOME/.ssh/authorized_keys ${INITRAMFS_DIR}/root/.ssh/authorize_keys
-chmod 700 ${INITRAMFS_DIR}/root/.ssh
-chmod 600 ${INITRAMFS_DIR}/root/.ssh/authorize_keys
+# # Copy the authorized keys for your regular user you administrate with
+# cp $HOME/.ssh/authorized_keys ${INITRAMFS_DIR}/root/.ssh/authorize_keys
+# chmod 700 ${INITRAMFS_DIR}/root/.ssh
+# chmod 600 ${INITRAMFS_DIR}/root/.ssh/authorize_keys
 
-# Generate SSH server keys
-HOST_RSA_KEY="/etc/ssh/ssh_host_rsa_key"
-HOST_DSA_KEY="/etc/ssh/ssh_host_dsa_key"
-HOST_ECDSA_KEY="/etc/ssh/ssh_host_ecdsa_key"
+# # Generate SSH server keys
+# HOST_RSA_KEY="/etc/ssh/ssh_host_rsa_key"
+# HOST_DSA_KEY="/etc/ssh/ssh_host_dsa_key"
+# HOST_ECDSA_KEY="/etc/ssh/ssh_host_ecdsa_key"
 
-if [ ! -f "$HOST_RSA_KEY" ]; then
-    sudo ssh-keygen -f $HOST_RSA_KEY -N '' -t rsa
-fi
-if [ ! -f "$HOST_DSA_KEY" ]; then
-    sudo ssh-keygen -f $HOST_DSA_KEY -N '' -t dsa
-fi
-if [ ! -f "$HOST_ECDSA_KEY" ]; then
-    sudo ssh-keygen -f $HOST_ECDSA_KEY -N '' -t ecdsa -b 521
-fi
+# if [ ! -f "$HOST_RSA_KEY" ]; then
+#     sudo ssh-keygen -f $HOST_RSA_KEY -N '' -t rsa
+# fi
+# if [ ! -f "$HOST_DSA_KEY" ]; then
+#     sudo ssh-keygen -f $HOST_DSA_KEY -N '' -t dsa
+# fi
+# if [ ! -f "$HOST_ECDSA_KEY" ]; then
+#     sudo ssh-keygen -f $HOST_ECDSA_KEY -N '' -t ecdsa -b 521
+# fi
 
-# Copy OpenSSH's host keys to keep both initramfs' and regular ssh signed the same
-# otherwise openssh clients will see different host keys and chicken out. Here we only copy the
-# ecdsa host key, because ecdsa is default with OpenSSH. For RSA and others, copy adequate keyfile.
-sudo -s -- <<EOF
-${INITRAMFS_DIR}/bin/dropbearconvert openssh dropbear ${HOST_RSA_KEY} ${INITRAMFS_DIR}/etc/dropbear/dropbear_rsa_host_key
-${INITRAMFS_DIR}/bin/dropbearconvert openssh dropbear ${HOST_DSA_KEY} ${INITRAMFS_DIR}/etc/dropbear/dropbear_dsa_host_key
-${INITRAMFS_DIR}/bin/dropbearconvert openssh dropbear ${HOST_ECDSA_KEY} ${INITRAMFS_DIR}/etc/dropbear/dropbear_ecdsa_host_key
-EOF
+# # Copy OpenSSH's host keys to keep both initramfs' and regular ssh signed the same
+# # otherwise openssh clients will see different host keys and chicken out. Here we only copy the
+# # ecdsa host key, because ecdsa is default with OpenSSH. For RSA and others, copy adequate keyfile.
+# sudo -s -- <<EOF
+# ${INITRAMFS_DIR}/bin/dropbearconvert openssh dropbear ${HOST_RSA_KEY} ${INITRAMFS_DIR}/etc/dropbear/dropbear_rsa_host_key
+# ${INITRAMFS_DIR}/bin/dropbearconvert openssh dropbear ${HOST_DSA_KEY} ${INITRAMFS_DIR}/etc/dropbear/dropbear_dsa_host_key
+# ${INITRAMFS_DIR}/bin/dropbearconvert openssh dropbear ${HOST_ECDSA_KEY} ${INITRAMFS_DIR}/etc/dropbear/dropbear_ecdsa_host_key
+# EOF
 
-# These two libs are needed for dropbear, even if it's built statically, because we don't use PAM
-# and dropbear uses libnss to find user to authenticate against
-# TODO: Determine if this is needed
-# cp -L /lib64/libnss_compat.so.2 ${INITRAMFS}/lib64/
-# cp -L /lib64/libnss_files.so.2 ${INITRAMFS}/lib64
+# # These two libs are needed for dropbear, even if it's built statically, because we don't use PAM
+# # and dropbear uses libnss to find user to authenticate against
+# # TODO: Determine if this is needed
+# # cp -L /lib64/libnss_compat.so.2 ${INITRAMFS}/lib64/
+# # cp -L /lib64/libnss_files.so.2 ${INITRAMFS}/lib64
 
-# Basic system defaults
-echo "root:x:0:0:root:/root:/bin/sh" > ${INITRAMFS_DIR}/etc/passwd
-echo "root:*:::::::" > ${INITRAMFS_DIR}/etc/shadow
-echo "root:x:0:root" > ${INITRAMFS_DIR}/etc/group
-echo "/bin/sh" > ${INITRAMFS_DIR}/etc/shells
-chmod 640 ${INITRAMFS_DIR}/etc/shadow
+# # Basic system defaults
+# echo "root:x:0:0:root:/root:/bin/sh" > ${INITRAMFS_DIR}/etc/passwd
+# echo "root:*:::::::" > ${INITRAMFS_DIR}/etc/shadow
+# echo "root:x:0:root" > ${INITRAMFS_DIR}/etc/group
+# echo "/bin/sh" > ${INITRAMFS_DIR}/etc/shells
+# chmod 640 ${INITRAMFS_DIR}/etc/shadow
 
-cat << EOF > ${INITRAMFS_DIR}/etc/nsswitch.conf
-passwd:	files
-shadow:	files
-group:	files
-EOF
+# cat << EOF > ${INITRAMFS_DIR}/etc/nsswitch.conf
+# passwd:	files
+# shadow:	files
+# group:	files
+# EOF
 
 # # For each of the non-static binary listed above, copy the required libs
 # # Note: lddtree belongs to app-misc/pax-utils the newer versions of which
