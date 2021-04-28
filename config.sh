@@ -100,37 +100,42 @@ BUSYBOX_DOWNLOAD_DOMAIN="https://www.busybox.net/downloads"
 BUSYBOX_DOWNLOAD_URL="${BUSYBOX_DOWNLOAD_DOMAIN}/${BUSYBOX_DOWNLOAD_FILE}"
 BUSYBOX_EXTRACT_DIR="busybox-${BUSYBOX_VERSION}"
 
-# echo "Downloading $BUSYBOX_DOWNLOAD_URL"
+echo "Downloading $BUSYBOX_DOWNLOAD_URL"
 
-# wget $BUSYBOX_DOWNLOAD_URL
+wget $BUSYBOX_DOWNLOAD_URL
 
-# rm -rf $BUSYBOX_DIR
-# tar -xvf $BUSYBOX_DOWNLOAD_FILE
-# rm $BUSYBOX_DOWNLOAD_FILE
-# mv $BUSYBOX_EXTRACT_DIR $BUSYBOX_DIR
+rm -rf $BUSYBOX_DIR
+tar -xvf $BUSYBOX_DOWNLOAD_FILE
+rm $BUSYBOX_DOWNLOAD_FILE
+mv $BUSYBOX_EXTRACT_DIR $BUSYBOX_DIR
 
-# cd $BUSYBOX_DIR
+cd $BUSYBOX_DIR
 
-# # Generate the default busybox .config
-# if [ -z "$TARGET_TOOLCHAIN_PREFIX" ]; then
-#     make defconfig
-# else
-#     ARCH=$TARGET_ARCH CROSS_COMPILE=$TARGET_TOOLCHAIN_PREFIX make defconfig
-# fi
+arch="$TARGET_ARCH"
+if [ "$TARGET_ARCH" == "aarch64" ]; then
+    arch="arm64"
+fi
 
-# # Configure busybox to be built as a static binary
-# sed -i 's/# CONFIG_STATIC is not set/CONFIG_STATIC=y/' .config
+# Generate the default busybox .config
+if [ -z "$TARGET_TOOLCHAIN_PREFIX" ]; then
+    make defconfig
+else
+    ARCH=$arch CROSS_COMPILE=$TARGET_TOOLCHAIN_PREFIX make defconfig
+fi
 
-# # Build busybox
-# if [ -z "$TARGET_TOOLCHAIN_PREFIX" ]; then
-#     make -j8
-#     make install -j8
-# else
-#     ARCH=$TARGET_ARCH CROSS_COMPILE=$TARGET_TOOLCHAIN make -j8
-#     ARCH=$TARGET_ARCH CROSS_COMPILE=$TARGET_TOOLCHAIN make install -j8
-# fi
+# Configure busybox to be built as a static binary
+sed -i 's/# CONFIG_STATIC is not set/CONFIG_STATIC=y/' .config
 
-# cd ..
+# Build busybox
+if [ -z "$TARGET_TOOLCHAIN_PREFIX" ]; then
+    make -j8
+    make install -j8
+else
+    ARCH=$arch CROSS_COMPILE=$TARGET_TOOLCHAIN_PREFIX make -j8
+    ARCH=$arch CROSS_COMPILE=$TARGET_TOOLCHAIN_PREFIX make install -j8
+fi
+
+cd ..
 
 
 # -------------------- Dropbear Setup ---------------------
